@@ -1,0 +1,8 @@
+.idea/*
+.env
+humhub.env
+humhub-data
+humhub-data-docker
+humhub-backup
+caddy-data
+mysql-data

@@ -1,0 +1,20 @@
+Changelog
+=========
+
+March 30, 2026
+--------------
+- Enh: Optional optimization for temporary storage usage
+- Updated backup-restore.md to include optional HUMHUB_DOCKER__BACKUP_MERGE_ARCHIVES variable
+
+March 16, 2026
+--------------
+- Introduced multi service setup
+- Added simple health check and env variables for service config
+- Unified HUMHUB_DOCKER_* env variable naming
+
+March 9, 2026
+-------------
+- Added Restore instructions to backup-restore.md
+- Faulty curly bracket removed
+- Optimized image size
+- Introduced CHANGELOG.md

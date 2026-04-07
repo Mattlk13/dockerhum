@@ -1,0 +1,89 @@
+#---------------------------------------------------------------
+# FOR DEV USAGE ONLY!
+#---------------------------------------------------------------
+
+services:
+  humhub:
+    build:
+      context: ../image
+      dockerfile: ../image/Dockerfile
+    image: image-humhub:latest
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3 (optional)
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./humhub-data:/data
+      - ./humhub-backup:/backup
+    environment:
+      - HUMHUB_DEBUG=true
+      - SERVER_NAME=https://localhost
+      - HUMHUB_CONFIG__COMPONENTS__DB__DSN=mysql:host=db;dbname=humhub
+      - HUMHUB_CONFIG__COMPONENTS__DB__USERNAME=root
+      - HUMHUB_CONFIG__COMPONENTS__DB__PASSWORD=changeMe
+      - HUMHUB_DOCKER__AUTOSTART_FRANKENPHP=true
+      - HUMHUB_DOCKER__AUTOSTART_SCHEDULER=false
+      - HUMHUB_DOCKER__AUTOSTART_WORKER=false
+    healthcheck:
+      test: ["CMD", "/app/bin/humhub-simple-healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+  db:
+    image: mariadb
+    restart: always
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    user: root
+    volumes:
+      - ./mysql-data:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=changeMe
+    expose:
+      - "3306"
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh", "--su-mysql", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  scheduler:
+    image: image-humhub:latest
+    depends_on:
+      humhub:
+        condition: service_healthy
+    volumes:
+      - ./humhub-data:/data
+    environment:
+      - HUMHUB_DEBUG=true
+      - SERVER_NAME=https://localhost
+      - HUMHUB_CONFIG__COMPONENTS__DB__DSN=mysql:host=db;dbname=humhub
+      - HUMHUB_CONFIG__COMPONENTS__DB__USERNAME=root
+      - HUMHUB_CONFIG__COMPONENTS__DB__PASSWORD=changeMe
+      - HUMHUB_DOCKER__AUTOSTART_FRANKENPHP=false
+      - HUMHUB_DOCKER__AUTOSTART_SCHEDULER=true
+      - HUMHUB_DOCKER__AUTOSTART_WORKER=false
+  worker:
+    image: image-humhub:latest
+    deploy:
+      mode: replicated
+      replicas: 2
+    depends_on:
+      humhub:
+        condition: service_healthy
+    volumes:
+      - ./humhub-data:/data
+    environment:
+      - HUMHUB_DEBUG=true
+      - SERVER_NAME=https://localhost
+      - HUMHUB_CONFIG__COMPONENTS__DB__DSN=mysql:host=db;dbname=humhub
+      - HUMHUB_CONFIG__COMPONENTS__DB__USERNAME=root
+      - HUMHUB_CONFIG__COMPONENTS__DB__PASSWORD=changeMe
+      - HUMHUB_DOCKER__AUTOSTART_FRANKENPHP=false
+      - HUMHUB_DOCKER__AUTOSTART_SCHEDULER=false
+      - HUMHUB_DOCKER__AUTOSTART_WORKER=true
+      - HUMHUB_DOCKER__NUMPROCS_WORKER=1

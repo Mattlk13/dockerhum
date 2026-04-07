@@ -1,0 +1,11 @@
+#!/bin/bash
+set -e
+
+if [ "$(id -u)" -eq 0 ]; then
+  exec su www-data -s /app/bin/yii -- "$@"
+elif [ "$(id -u -n)" = "www-data" ]; then
+  exec /app/bin/yii "$@"
+else
+  echo "This wrapper must be run as root or www-data"
+  exit 1
+fi
