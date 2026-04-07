@@ -95,7 +95,6 @@ Your instance installer will be available at:
 
 - [Upgrading HumHub](docs/upgrading.md)
 - [Using the HumHub Console Interface](docs/cli.md)
-- [Other HumHub Versions](xxx.md)
 - [Backup and Restore](docs/backup-restore.md)
 - [Custom Themes and Modules](docs/custom-themes-modules.md)
 - [Running Without Docker Compose](docs/manual-run.md)
