@@ -1,6 +1,10 @@
 Changelog
 =========
 
+April 7, 2026
+--------------
+- Updated ci workflow to tag nightly builds as stable/experimental-nightly on humhub/humhub
+
 March 30, 2026
 --------------
 - Enh: Optional optimization for temporary storage usage
