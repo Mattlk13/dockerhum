@@ -11,7 +11,11 @@ jobs:
   build:
     strategy:
       matrix:
-        branch: [master, develop]
+        include:
+          - branch: master
+            tag: stable-nightly
+          - branch: develop
+            tag: experimental-nightly
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -23,7 +27,7 @@ jobs:
         docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
 
     - name: Build the Docker image
-      run: cd image; docker build . --file Dockerfile --build-arg HUMHUB_GIT_BRANCH=${{ matrix.branch }} --tag humhub/humhub-internal:${{ matrix.branch }}
+      run: cd image; docker build . --file Dockerfile --build-arg HUMHUB_GIT_BRANCH=${{ matrix.branch }} --tag humhub/humhub:${{ matrix.tag }}
 
     - name: Docker Push
-      run: docker push humhub/humhub-internal:${{ matrix.branch }}
+      run: docker push humhub/humhub:${{ matrix.tag }}
