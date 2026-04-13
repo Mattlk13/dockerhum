@@ -1,0 +1,19 @@
+name: Docker Cleanup CI
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "33 4 * * *"
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Clean up unused images
+      env:
+        DOCKERHUB_NAMESPACE: humhub
+        DOCKERHUB_REPOSITORY: humhub
+        DOCKERHUB_USERNAME: ${{secrets.DOCKER_USER}}
+        DOCKERHUB_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
+      run: bash image/files/dockerhub-cleanup-unused.sh --dry-run

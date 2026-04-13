@@ -1,0 +1,46 @@
+name: Docker Publish Nightly Image CI
+on:
+  push:
+     tags:
+        - '*'
+  workflow_dispatch:
+  schedule:
+    - cron: "33 3 * * *"
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - branch: master
+            tag: stable-nightly
+          - branch: develop
+            tag: experimental-nightly
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Docker Login
+      env:
+        DOCKER_USER: ${{secrets.DOCKER_USER}}
+        DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
+      run: |
+        docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
+
+    - name: Generate Build Tag
+      id: tag-build
+      run: |
+        TIMESTAMP=$(date -u '+%Y%m%d%H%M%S')
+        GIT_SHA=$(git ls-remote https://github.com/humhub/humhub.git refs/heads/${{ matrix.branch }} | cut -c1-7)
+        echo "value=${{ matrix.tag }}-${TIMESTAMP}-${GIT_SHA}" >> $GITHUB_OUTPUT
+
+    - name: Build the Docker Image
+      run: |
+        cd image; docker build . --file Dockerfile \
+          --build-arg HUMHUB_GIT_BRANCH=${{ matrix.branch }} \
+          --tag humhub/humhub:${{ matrix.tag }} \
+          --tag humhub/humhub:${{ steps.tag-build.outputs.value }}
+
+    - name: Docker Push
+      run: |
+        docker push humhub/humhub:${{ matrix.tag }}
+        docker push humhub/humhub:${{ steps.tag-build.outputs.value }}

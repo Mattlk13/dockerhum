@@ -1,6 +1,12 @@
 Changelog
 =========
 
+April 13, 2026
+--------------
+- Added build tags to nightly builds
+- Added cleanup workflow for unused docker hub images
+- Rename publish workflow to publish-nightly
+
 April 7, 2026
 --------------
 - Updated ci workflow to tag nightly builds as stable/experimental-nightly on humhub/humhub
