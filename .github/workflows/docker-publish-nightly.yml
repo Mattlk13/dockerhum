@@ -1,4 +1,4 @@
-name: Docker Nightly Image CI
+name: Docker Publish Nightly Image CI
 on:
   push:
      tags:
