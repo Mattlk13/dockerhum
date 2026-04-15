@@ -1,3 +1,6 @@
+# This workflow is intentionally executed on the main branch only.
+# GitHub Actions cron schedules always run from the default branch (main),
+# so this file is ignored on all other branches even if present there.
 name: Docker Cleanup CI
 on:
   workflow_dispatch:
