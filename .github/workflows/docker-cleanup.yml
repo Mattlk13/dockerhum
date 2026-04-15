@@ -16,4 +16,4 @@ jobs:
         DOCKERHUB_REPOSITORY: humhub
         DOCKERHUB_USERNAME: ${{secrets.DOCKER_USER}}
         DOCKERHUB_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
-      run: bash image/files/dockerhub-cleanup-unused.sh --dry-run
+      run: bash image/files/dockerhub-cleanup-unused.sh
