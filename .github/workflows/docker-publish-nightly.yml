@@ -1,46 +1,55 @@
 name: Docker Publish Nightly Image CI
 on:
-  push:
-     tags:
-        - '*'
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Branch to build'
+        required: true
+        type: string
   workflow_dispatch:
-  schedule:
-    - cron: "33 3 * * *"
 
 jobs:
   build:
-    strategy:
-      matrix:
-        include:
-          - branch: master
-            tag: stable-nightly
-          - branch: develop
-            tag: experimental-nightly
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - name: Resolve branch and tag
+      id: resolve
+      run: |
+        REF="${{ inputs.ref || github.ref_name }}"
+        case "$REF" in
+          main)    TAG="stable-nightly";       HUMHUB_BRANCH="master"  ;;
+          develop) TAG="experimental-nightly"; HUMHUB_BRANCH="develop" ;;
+          *)       TAG="${REF#v}-nightly";     HUMHUB_BRANCH="$REF" ;;
+        esac
+        echo "ref=$REF"                     >> $GITHUB_OUTPUT
+        echo "tag=$TAG"                     >> $GITHUB_OUTPUT
+        echo "humhub_branch=$HUMHUB_BRANCH" >> $GITHUB_OUTPUT
+
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ steps.resolve.outputs.ref }}
+
     - name: Docker Login
       env:
-        DOCKER_USER: ${{secrets.DOCKER_USER}}
-        DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
-      run: |
-        docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
+        DOCKER_USER: ${{ secrets.DOCKER_USER }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      run: docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
 
-    - name: Generate Build Tag
-      id: tag-build
+    - name: Generate immutable tag
+      id: immutable
       run: |
         TIMESTAMP=$(date -u '+%Y%m%d%H%M%S')
-        GIT_SHA=$(git ls-remote https://github.com/humhub/humhub.git refs/heads/${{ matrix.branch }} | cut -c1-7)
-        echo "value=${{ matrix.tag }}-${TIMESTAMP}-${GIT_SHA}" >> $GITHUB_OUTPUT
+        GIT_SHA=$(git ls-remote https://github.com/humhub/humhub.git refs/heads/${{ steps.resolve.outputs.humhub_branch }} | cut -c1-7)
+        echo "value=${{ steps.resolve.outputs.tag }}-${TIMESTAMP}-${GIT_SHA}" >> $GITHUB_OUTPUT
 
     - name: Build the Docker Image
       run: |
         cd image; docker build . --file Dockerfile \
-          --build-arg HUMHUB_GIT_BRANCH=${{ matrix.branch }} \
-          --tag humhub/humhub:${{ matrix.tag }} \
-          --tag humhub/humhub:${{ steps.tag-build.outputs.value }}
+          --build-arg HUMHUB_GIT_BRANCH=${{ steps.resolve.outputs.humhub_branch }} \
+          --tag humhub/humhub:${{ steps.resolve.outputs.tag }} \
+          --tag humhub/humhub:${{ steps.immutable.outputs.value }}
 
     - name: Docker Push
       run: |
-        docker push humhub/humhub:${{ matrix.tag }}
-        docker push humhub/humhub:${{ steps.tag-build.outputs.value }}
+        docker push humhub/humhub:${{ steps.resolve.outputs.tag }}
+        docker push humhub/humhub:${{ steps.immutable.outputs.value }}

@@ -1,0 +1,19 @@
+# This workflow is intentionally executed on the main branch only.
+# GitHub Actions cron schedules always run from the default branch (main),
+# so this file is ignored on all other branches even if present there.
+name: Nightly Build Dispatcher
+on:
+  schedule:
+    - cron: "33 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  dispatch:
+    strategy:
+      fail-fast: false
+      matrix:
+        ref: [main, develop]
+    uses: ./.github/workflows/docker-publish-nightly.yml
+    with:
+      ref: ${{ matrix.ref }}
+    secrets: inherit

@@ -1,6 +1,11 @@
 Changelog
 =========
 
+April 15, 2026
+--------------
+- Introduced docker image tagging policy to documentation
+- Added multi branch build workflow
+
 April 13, 2026
 --------------
 - Added build tags to nightly builds

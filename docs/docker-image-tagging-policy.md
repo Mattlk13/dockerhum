@@ -1,0 +1,126 @@
+# Docker Image Tagging Policy
+
+## Overview
+
+This repository builds and publishes Docker images for [HumHub](https://github.com/humhub/humhub)
+to Docker Hub as `humhub/humhub`. Each branch in this repository corresponds to a branch in the
+upstream HumHub source repository. The build workflow derives the HumHub source branch and the
+Docker image tag directly from the current repository branch.
+
+---
+
+## Branch-to-Tag Mapping
+
+| Docker repo branch | HumHub source branch | Mutable tag | Immutable tag pattern | Notes |
+|---|---|---|---|---|
+| `main` | `master` | `stable-nightly` | `stable-nightly-YYYYMMDDHHMMSS-<sha7>` | permanent |
+| `develop` | `develop` | `experimental-nightly` | `experimental-nightly-YYYYMMDDHHMMSS-<sha7>` | permanent |
+| `v1.17` | `v1.17` | `1.17-nightly` | `1.17-nightly-YYYYMMDDHHMMSS-<sha7>` | example — see below |
+
+`main` and `develop` are the two permanent branches. Additional version branches (e.g. `v1.17`)
+are created on demand for older HumHub releases that still receive support and are removed once
+that version reaches end-of-life.
+
+Every build pushes **two tags**:
+
+- **Mutable tag** — always points to the latest build of that branch (e.g. `stable-nightly`).
+  Suitable for environments that want to stay current automatically.
+- **Immutable tag** — uniquely identifies a specific build by timestamp and the upstream commit
+  SHA. Suitable for pinning to a known-good state and for audit trails.
+
+---
+
+## Workflow Architecture
+
+Scheduled builds are controlled entirely from the `main` branch to work around the GitHub Actions
+limitation that cron schedules only execute from the default branch.
+
+```
+.github/workflows/
+  nightly-dispatcher.yml     ← main branch only; holds the cron schedule;
+                                triggers docker-publish-nightly.yml on each target branch
+  docker-publish-nightly.yml ← all branches; the actual build logic
+  docker-cleanup.yml         ← main branch only; cleanup job
+```
+
+> **Why "main branch only"?**
+> GitHub Actions cron schedules only ever execute from the repository's default branch (`main`),
+> so `nightly-dispatcher.yml` and `docker-cleanup.yml` are never triggered on other branches
+> even if the files are present there. They can safely remain in version branches.
+
+### Dispatcher workflow (`nightly-dispatcher.yml`)
+
+Runs on a schedule and triggers `docker-publish-nightly.yml` on each listed branch via
+`workflow_dispatch` with a `ref` input. Adding or removing a branch from the dispatcher
+matrix is the single control point for enabling or disabling nightly builds.
+
+### Build workflow (`docker-publish-nightly.yml`)
+
+Executed per branch. Performs the following steps:
+
+1. Checks out the docker repo branch
+2. Logs in to Docker Hub
+3. Resolves the upstream HumHub commit SHA (`git ls-remote`) and generates the immutable tag
+4. Builds the Docker image with `HUMHUB_GIT_BRANCH` set to the mapped upstream branch
+5. Pushes both the mutable and the immutable tag to `humhub/humhub`
+
+---
+
+## Managing Supported Versions
+
+### Add a new version (e.g. `v1.18`)
+
+1. Create branch `v1.18` from `main`.
+2. On `main`, add `v1.18` to the branch matrix in `nightly-dispatcher.yml`.
+
+### Drop support for a version (e.g. `v1.17`)
+
+1. Remove `v1.17` from the branch matrix in `nightly-dispatcher.yml` on `main`.
+2. Optionally archive or delete the `v1.17` branch.
+
+### Temporarily pause all nightly builds
+
+Disable the `nightly-dispatcher.yml` workflow via the GitHub Actions UI:
+**Actions** → select the workflow → **Disable workflow**.
+
+### Trigger a manual build for a single branch
+
+Go to **Actions** → `Docker Publish Nightly Image CI` → **Run workflow** → select the target
+branch.
+
+---
+
+## Cleanup Process
+
+A separate workflow (`docker-cleanup.yml`) runs daily at 04:33 UTC and removes stale images from
+Docker Hub.
+
+### What gets deleted
+
+An image (digest) is considered **unused** when **all** of its tags match the immutable tag
+pattern:
+
+```
+<branch>-YYYYMMDDHHMMSS-<sha7>
+```
+
+An image is considered **active** as long as it carries at least one mutable tag
+(e.g. `stable-nightly`, `1.17-nightly`). Active images are never deleted.
+
+In practice this means: when a new nightly build runs, the previous mutable tag is moved to the
+new digest and the old digest becomes immutable-only. The cleanup job then removes it on its next
+run.
+
+### Dry-run mode
+
+The cleanup script supports a `--dry-run` flag that prints what would be deleted without actually
+deleting anything. To test locally:
+
+```bash
+bash image/files/dockerhub-cleanup-unused.sh \
+  --namespace humhub \
+  --repository humhub \
+  --username <user> \
+  --password <token> \
+  --dry-run
+```
