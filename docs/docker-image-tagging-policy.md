@@ -165,24 +165,31 @@ newest release from the `master` line only, consistent with how `stable-nightly`
 
 ### Docker Repo Branch Selection
 
-The dispatcher extracts the minor version from the release tag (e.g. `v1.18.2` → `v1.18`)
-and checks whether a corresponding branch exists in this repository:
+The docker repo branch and the `stable` tag decision are both derived directly from
+`target_commitish` — the branch that was set as the release target in `humhub/humhub`:
 
-- Branch `v1.18` **exists** → maintenance release → build from `v1.18`
-- Branch `v1.18` **does not exist** → new release → build from `main`
+| `target_commitish` | Docker repo branch | `stable` pushed? |
+|---|---|---|
+| `master` | `main` | yes |
+| `v1.17` | `v1.17` | no |
+
+`target_commitish` is included in the `repository_dispatch` payload automatically and is a
+required input for manual `workflow_dispatch` runs.
 
 ### Managing Release Builds
 
 **Add a new maintenance version (e.g. `v1.17`):**
-No action needed in the release workflow — once the `v1.17` branch exists, the dispatcher
-automatically routes `v1.17.x` releases to it.
+Create the `v1.17` branch in `humhub/docker`. No changes to the release workflow are needed —
+routing is driven by `target_commitish` from the release event.
 
 **Drop support for a maintenance version (e.g. `v1.17`):**
 Remove or archive the `v1.17` branch. No further release builds will be triggered for `v1.17.x`.
 
 **Trigger a manual release build:**
 Go to **Actions** → `Docker Publish Release CI` → **Run workflow**, select `main`, and provide
-the release tag (e.g. `v1.18.2`) as input.
+both required inputs:
+- `release_tag` — the HumHub git tag (e.g. `v1.18.2`)
+- `target_commitish` — the branch it was cut from in `humhub/humhub` (e.g. `master` or `v1.17`)
 
 ---
 
