@@ -1,6 +1,10 @@
 Changelog
 =========
 
+April 16, 2026
+--------------
+- Introduced automated docker version builds on humhub releases
+
 April 15, 2026
 --------------
 - Introduced docker image tagging policy to documentation
