@@ -1,0 +1,22 @@
+# This file belongs in humhub/humhub at:
+#   .github/workflows/notify-docker-release.yml
+#
+# Prerequisites:
+#   A PAT with actions:write permission on humhub/docker must be stored
+#   as secret DOCKER_REPO_DISPATCH_TOKEN in humhub/humhub.
+name: Notify Docker Repo on Release
+on:
+  release:
+    types: [published]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Send repository_dispatch to humhub/docker
+      uses: peter-evans/repository-dispatch@v3
+      with:
+        token: ${{ secrets.DOCKER_REPO_DISPATCH_TOKEN }}
+        repository: humhub/docker
+        event-type: humhub-release
+        client-payload: '{"tag": "${{ github.event.release.tag_name }}"}'
