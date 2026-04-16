@@ -11,25 +11,33 @@ on:
         description: 'HumHub release tag (e.g. v1.18.2)'
         required: true
         type: string
+      target_commitish:
+        description: 'Branch the release was cut from in humhub/humhub (e.g. master, v1.17)'
+        required: true
+        type: string
 
 jobs:
   resolve:
     runs-on: ubuntu-latest
     outputs:
-      release_tag: ${{ steps.resolve.outputs.release_tag }}
+      release_tag:       ${{ steps.resolve.outputs.release_tag }}
+      target_commitish:  ${{ steps.resolve.outputs.target_commitish }}
     steps:
-    - name: Resolve release tag
+    - name: Resolve release tag and target branch
       id: resolve
       run: |
         if [[ "${{ github.event_name }}" == "repository_dispatch" ]]; then
-          echo "release_tag=${{ github.event.client_payload.tag }}" >> $GITHUB_OUTPUT
+          echo "release_tag=${{ github.event.client_payload.tag }}"                    >> $GITHUB_OUTPUT
+          echo "target_commitish=${{ github.event.client_payload.target_commitish }}"  >> $GITHUB_OUTPUT
         else
-          echo "release_tag=${{ inputs.release_tag }}" >> $GITHUB_OUTPUT
+          echo "release_tag=${{ inputs.release_tag }}"           >> $GITHUB_OUTPUT
+          echo "target_commitish=${{ inputs.target_commitish }}"  >> $GITHUB_OUTPUT
         fi
 
   build:
     needs: resolve
     uses: ./.github/workflows/docker-publish-release.yml
     with:
-      release_tag: ${{ needs.resolve.outputs.release_tag }}
+      release_tag:      ${{ needs.resolve.outputs.release_tag }}
+      target_commitish: ${{ needs.resolve.outputs.target_commitish }}
     secrets: inherit
