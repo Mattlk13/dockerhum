@@ -11,6 +11,8 @@ Docker image tag directly from the current repository branch.
 
 ## Branch-to-Tag Mapping
 
+### Nightly Builds
+
 | Docker repo branch | HumHub source branch | Mutable tag | Immutable tag pattern | Notes |
 |---|---|---|---|---|
 | `main` | `master` | `stable-nightly` | `stable-nightly-YYYYMMDDHHMMSS-<sha7>` | permanent |
@@ -28,11 +30,33 @@ Every build pushes **two tags**:
 - **Immutable tag** — uniquely identifies a specific build by timestamp and the upstream commit
   SHA. Suitable for pinning to a known-good state and for audit trails.
 
----
+### Release Builds
 
-## Tag Usage Guidelines
+The set of tags pushed depends on whether the `humhub/humhub` release originates from the `master` line
+(built from docker `main`) or is a maintenance release of an older version (built from a
+version branch such as `v1.17`).
 
-### Why `latest` is not published
+**New release** (e.g. `v1.18.2`, built from docker `main`):
+
+| Tag | Type | Description |
+|---|---|---|
+| `1.18.2` | Mutable | Exact version |
+| `1.18` | Mutable | Always the latest patch of this minor version |
+| `stable` | Mutable | Always the newest stable release overall |
+| `1.18.2-YYYYMMDDHHMMSS-<sha7>` | Immutable | Pinnable, audit-safe build reference |
+
+**Maintenance release** (e.g. `v1.17.5`, built from docker `v1.17`):
+
+| Tag | Type | Description |
+|---|---|---|
+| `1.17.5` | Mutable | Exact version |
+| `1.17` | Mutable | Always the latest patch of this minor version |
+| `1.17.5-YYYYMMDDHHMMSS-<sha7>` | Immutable | Pinnable, audit-safe build reference |
+
+The `stable` tag is intentionally absent from maintenance releases — it always reflects the
+newest release from the `master` line only, consistent with how `stable-nightly` works.
+
+**Why `latest` is not published**
 
 `latest` is a conventional Docker tag with no technical special meaning beyond being the default
 when no tag is specified. It is omitted from this project in favour of the more descriptive
@@ -44,7 +68,7 @@ breaking changes.
 
 ---
 
-## Workflow Architecture
+## Nightly Build Workflow
 
 Scheduled builds are controlled entirely from the `main` branch to work around the GitHub Actions
 limitation that cron schedules only execute from the default branch.
@@ -78,26 +102,24 @@ Executed per branch. Performs the following steps:
 4. Builds the Docker image with `HUMHUB_GIT_BRANCH` set to the mapped upstream branch
 5. Pushes both the mutable and the immutable tag to `humhub/humhub`
 
----
+### Managing Nightly Builds
 
-## Managing Supported Versions
-
-### Add a new version (e.g. `v1.18`)
+**Add a new version (e.g. `v1.18`)**
 
 1. Create branch `v1.18` from `main`.
 2. On `main`, add `v1.18` to the branch matrix in `nightly-dispatcher.yml`.
 
-### Drop support for a version (e.g. `v1.17`)
+**Drop support for a version (e.g. `v1.17`)**
 
 1. Remove `v1.17` from the branch matrix in `nightly-dispatcher.yml` on `main`.
 2. Optionally archive or delete the `v1.17` branch.
 
-### Temporarily pause all nightly builds
+**Temporarily pause all nightly builds**
 
 Disable the `nightly-dispatcher.yml` workflow via the GitHub Actions UI:
 **Actions** → select the workflow → **Disable workflow**.
 
-### Trigger a manual build for a single branch
+**Trigger a manual build for a single branch**
 
 Go to **Actions** → `Docker Publish Nightly Image CI` → **Run workflow** → select the target
 branch.
@@ -136,32 +158,6 @@ humhub/docker
 
 A PAT with `actions: write` permission on `humhub/docker` must be stored as a secret
 (e.g. `DOCKER_REPO_DISPATCH_TOKEN`) in `humhub/humhub`.
-
-### Release Tag Strategy
-
-The set of tags pushed depends on whether the release originates from the `master` line
-(built from docker `main`) or is a maintenance release of an older version (built from a
-version branch such as `v1.17`).
-
-**New release** (e.g. `v1.18.2`, built from docker `main`):
-
-| Tag | Type | Description |
-|---|---|---|
-| `1.18.2` | Mutable | Exact version |
-| `1.18` | Mutable | Always the latest patch of this minor version |
-| `stable` | Mutable | Always the newest stable release overall |
-| `1.18.2-YYYYMMDDHHMMSS-<sha7>` | Immutable | Pinnable, audit-safe build reference |
-
-**Maintenance release** (e.g. `v1.17.5`, built from docker `v1.17`):
-
-| Tag | Type | Description |
-|---|---|---|
-| `1.17.5` | Mutable | Exact version |
-| `1.17` | Mutable | Always the latest patch of this minor version |
-| `1.17.5-YYYYMMDDHHMMSS-<sha7>` | Immutable | Pinnable, audit-safe build reference |
-
-The `stable` tag is intentionally absent from maintenance releases — it always reflects the
-newest release from the `master` line only, consistent with how `stable-nightly` works.
 
 ### Docker Repo Branch Selection
 
