@@ -267,3 +267,10 @@ To cover all immutable tags (nightly and release) with a single rule:
 ```
 ^.+-[0-9]{14}-[0-9a-f]{7}$
 ```
+
+---
+
+## Appendix
+
+- [Release Build Walkthrough](docker-release-walkthrough.md) — step-by-step trace of a release
+  build from `humhub/humhub` release published to final Docker Hub state
