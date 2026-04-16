@@ -30,6 +30,20 @@ Every build pushes **two tags**:
 
 ---
 
+## Tag Usage Guidelines
+
+### Why `latest` is not published
+
+`latest` is a conventional Docker tag with no technical special meaning beyond being the default
+when no tag is specified. It is omitted from this project in favour of the more descriptive
+`stable` tag, which communicates intent explicitly and is consistent with the nightly naming
+convention (`stable-nightly`).
+
+>Note that `stable` is a floating tag and will move across major versions, which may include
+breaking changes.
+
+---
+
 ## Workflow Architecture
 
 Scheduled builds are controlled entirely from the `main` branch to work around the GitHub Actions
@@ -90,6 +104,88 @@ branch.
 
 ---
 
+## Release Build Workflow
+
+Release builds are triggered whenever a new stable release is published in the upstream
+[humhub/humhub](https://github.com/humhub/humhub) repository. The `develop` branch is out of
+scope — only releases from the `master` line and supported maintenance versions are built.
+
+### Trigger Flow
+
+Builds are triggered by a `repository_dispatch` event sent from `humhub/humhub` immediately
+when a release is published:
+
+| Trigger | Source | Latency |
+|---|---|---|
+| `repository_dispatch` | `humhub/humhub` on `release: published` | Immediate |
+
+### Workflow Architecture
+
+```
+humhub/humhub
+  .github/workflows/
+    notify-docker-release.yml  ← fires on "release: published";
+                                  sends repository_dispatch to humhub/docker
+
+humhub/docker
+  .github/workflows/
+    release-dispatcher.yml     ← main branch only; receives repository_dispatch;
+                                  triggers docker-publish-release.yml
+    docker-publish-release.yml ← all branches; reusable release build logic
+```
+
+A PAT with `actions: write` permission on `humhub/docker` must be stored as a secret
+(e.g. `DOCKER_REPO_DISPATCH_TOKEN`) in `humhub/humhub`.
+
+### Release Tag Strategy
+
+The set of tags pushed depends on whether the release originates from the `master` line
+(built from docker `main`) or is a maintenance release of an older version (built from a
+version branch such as `v1.17`).
+
+**New release** (e.g. `v1.18.2`, built from docker `main`):
+
+| Tag | Type | Description |
+|---|---|---|
+| `1.18.2` | Mutable | Exact version |
+| `1.18` | Mutable | Always the latest patch of this minor version |
+| `stable` | Mutable | Always the newest stable release overall |
+| `1.18.2-YYYYMMDDHHMMSS-<sha7>` | Immutable | Pinnable, audit-safe build reference |
+
+**Maintenance release** (e.g. `v1.17.5`, built from docker `v1.17`):
+
+| Tag | Type | Description |
+|---|---|---|
+| `1.17.5` | Mutable | Exact version |
+| `1.17` | Mutable | Always the latest patch of this minor version |
+| `1.17.5-YYYYMMDDHHMMSS-<sha7>` | Immutable | Pinnable, audit-safe build reference |
+
+The `stable` tag is intentionally absent from maintenance releases — it always reflects the
+newest release from the `master` line only, consistent with how `stable-nightly` works.
+
+### Docker Repo Branch Selection
+
+The dispatcher extracts the minor version from the release tag (e.g. `v1.18.2` → `v1.18`)
+and checks whether a corresponding branch exists in this repository:
+
+- Branch `v1.18` **exists** → maintenance release → build from `v1.18`
+- Branch `v1.18` **does not exist** → new release → build from `main`
+
+### Managing Release Builds
+
+**Add a new maintenance version (e.g. `v1.17`):**
+No action needed in the release workflow — once the `v1.17` branch exists, the dispatcher
+automatically routes `v1.17.x` releases to it.
+
+**Drop support for a maintenance version (e.g. `v1.17`):**
+Remove or archive the `v1.17` branch. No further release builds will be triggered for `v1.17.x`.
+
+**Trigger a manual release build:**
+Go to **Actions** → `Docker Publish Release CI` → **Run workflow**, select `main`, and provide
+the release tag (e.g. `v1.18.2`) as input.
+
+---
+
 ## Cleanup Process
 
 A separate workflow (`docker-cleanup.yml`) runs daily at 04:33 UTC and removes stale images from
@@ -123,4 +219,44 @@ bash image/files/dockerhub-cleanup-unused.sh \
   --username <user> \
   --password <token> \
   --dry-run
+```
+
+---
+
+## Docker Hub Tag Immutability
+
+Docker Hub supports tag immutability rules defined by regex patterns. Configure these under
+**Repository Settings → Tag immutability** in the `humhub/humhub` Docker Hub repository.
+
+### Nightly immutable tags
+
+Pattern — matches `stable-nightly-YYYYMMDDHHMMSS-<sha7>`, `experimental-nightly-…`, `1.17-nightly-…`:
+
+```
+^.+-nightly-[0-9]{14}-[0-9a-f]{7}$
+```
+
+Examples matched:
+- `stable-nightly-20260416103300-a1b2c3d`
+- `experimental-nightly-20260416103300-a1b2c3d`
+- `1.17-nightly-20260416103300-a1b2c3d`
+
+### Release immutable tags
+
+Pattern — matches `1.18.2-YYYYMMDDHHMMSS-<sha7>`, `1.17.5-…`:
+
+```
+^[0-9]+\.[0-9]+\.[0-9]+-[0-9]{14}-[0-9a-f]{7}$
+```
+
+Examples matched:
+- `1.18.2-20260416103300-a1b2c3d`
+- `1.17.5-20260416103300-a1b2c3d`
+
+### Combined pattern
+
+To cover all immutable tags (nightly and release) with a single rule:
+
+```
+^.+-[0-9]{14}-[0-9a-f]{7}$
 ```
