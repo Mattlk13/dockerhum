@@ -1,0 +1,87 @@
+name: Docker Publish Release Image CI
+on:
+  workflow_call:
+    inputs:
+      release_tag:
+        description: 'HumHub release tag (e.g. v1.18.2)'
+        required: true
+        type: string
+      target_commitish:
+        description: 'Branch the release was cut from in humhub/humhub (e.g. master, v1.17)'
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'HumHub release tag (e.g. v1.18.2)'
+        required: true
+        type: string
+      target_commitish:
+        description: 'Branch the release was cut from in humhub/humhub (e.g. master, v1.17)'
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Resolve build parameters
+      id: resolve
+      run: |
+        RELEASE_TAG="${{ inputs.release_tag }}"
+        VERSION="${RELEASE_TAG#v}"                    # e.g. 1.18.2
+        MINOR=$(echo "$VERSION" | cut -d. -f1-2)      # e.g. 1.18
+
+        # Releases cut from master are new releases built from docker main,
+        # which also receive the stable tag. All other targets are maintenance
+        # releases built from their corresponding docker version branch.
+        if [[ "${{ inputs.target_commitish }}" == "master" ]]; then
+          DOCKER_BRANCH="main"
+          PUSH_STABLE="true"
+        else
+          DOCKER_BRANCH="${{ inputs.target_commitish }}"
+          PUSH_STABLE="false"
+        fi
+
+        echo "release_tag=$RELEASE_TAG"         >> $GITHUB_OUTPUT
+        echo "version=$VERSION"                 >> $GITHUB_OUTPUT
+        echo "minor=$MINOR"                     >> $GITHUB_OUTPUT
+        echo "docker_branch=$DOCKER_BRANCH"     >> $GITHUB_OUTPUT
+        echo "push_stable=$PUSH_STABLE"         >> $GITHUB_OUTPUT
+
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ steps.resolve.outputs.docker_branch }}
+
+    - name: Docker Login
+      env:
+        DOCKER_USER: ${{ secrets.DOCKER_USER }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      run: docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
+
+    - name: Generate immutable tag
+      id: immutable
+      run: |
+        TIMESTAMP=$(date -u '+%Y%m%d%H%M%S')
+        GIT_SHA=$(git ls-remote https://github.com/humhub/humhub.git "refs/tags/${{ steps.resolve.outputs.release_tag }}" | cut -c1-7)
+        echo "value=${{ steps.resolve.outputs.version }}-${TIMESTAMP}-${GIT_SHA}" >> $GITHUB_OUTPUT
+
+    - name: Build the Docker Image
+      run: |
+        cd image; docker build . --file Dockerfile \
+          --build-arg HUMHUB_GIT_BRANCH=${{ steps.resolve.outputs.release_tag }} \
+          --tag humhub/humhub:${{ steps.resolve.outputs.version }} \
+          --tag humhub/humhub:${{ steps.resolve.outputs.minor }} \
+          --tag humhub/humhub:${{ steps.immutable.outputs.value }}
+
+    - name: Docker Push
+      run: |
+        docker push humhub/humhub:${{ steps.resolve.outputs.version }}
+        docker push humhub/humhub:${{ steps.resolve.outputs.minor }}
+        docker push humhub/humhub:${{ steps.immutable.outputs.value }}
+
+    - name: Push stable tag
+      if: steps.resolve.outputs.push_stable == 'true'
+      run: |
+        docker tag humhub/humhub:${{ steps.resolve.outputs.version }} humhub/humhub:stable
+        docker push humhub/humhub:stable

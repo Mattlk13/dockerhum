@@ -1,0 +1,43 @@
+# This workflow is intentionally executed on the main branch only.
+# GitHub Actions repository_dispatch events are always delivered to the default branch (main),
+# so this file is ignored on all other branches even if present there.
+name: Release Build Dispatcher
+on:
+  repository_dispatch:
+    types: [humhub-release]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'HumHub release tag (e.g. v1.18.2)'
+        required: true
+        type: string
+      target_commitish:
+        description: 'Branch the release was cut from in humhub/humhub (e.g. master, v1.17)'
+        required: true
+        type: string
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      release_tag:       ${{ steps.resolve.outputs.release_tag }}
+      target_commitish:  ${{ steps.resolve.outputs.target_commitish }}
+    steps:
+    - name: Resolve release tag and target branch
+      id: resolve
+      run: |
+        if [[ "${{ github.event_name }}" == "repository_dispatch" ]]; then
+          echo "release_tag=${{ github.event.client_payload.tag }}"                    >> $GITHUB_OUTPUT
+          echo "target_commitish=${{ github.event.client_payload.target_commitish }}"  >> $GITHUB_OUTPUT
+        else
+          echo "release_tag=${{ inputs.release_tag }}"           >> $GITHUB_OUTPUT
+          echo "target_commitish=${{ inputs.target_commitish }}"  >> $GITHUB_OUTPUT
+        fi
+
+  build:
+    needs: resolve
+    uses: ./.github/workflows/docker-publish-release.yml
+    with:
+      release_tag:      ${{ needs.resolve.outputs.release_tag }}
+      target_commitish: ${{ needs.resolve.outputs.target_commitish }}
+    secrets: inherit
