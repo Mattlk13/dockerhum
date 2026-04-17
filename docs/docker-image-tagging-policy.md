@@ -35,7 +35,7 @@ Every build pushes **two tags**:
 The set of tags pushed depends on whether the `humhub/humhub` release originates from `develop`
 (beta), `master` (new stable release), or a version branch (maintenance release).
 
-**Beta release** (e.g. `v1.19.0-beta.1`, built from docker `develop`):
+**Beta release** (e.g. `v1.19.0-beta.1`, built from docker branch `develop`):
 
 | Tag | Type | Description |
 |---|---|---|
@@ -43,7 +43,7 @@ The set of tags pushed depends on whether the `humhub/humhub` release originates
 | `1.19-beta` | Mutable | Always the latest beta of the 1.19 line |
 | `1.19.0-beta.1-YYYYMMDDHHMMSS-<sha7>` | Immutable | Pinnable, audit-safe build reference |
 
-**New stable release** (e.g. `v1.18.0`, built from docker `main`):
+**New stable release** (e.g. `v1.18.0`, built from docker branch `main`):
 
 | Tag | Type | Description |
 |---|---|---|
@@ -53,7 +53,7 @@ The set of tags pushed depends on whether the `humhub/humhub` release originates
 | `1.18-beta` | Mutable | Transitions from beta to stable — points to `1.18.0` |
 | `1.18.0-YYYYMMDDHHMMSS-<sha7>` | Immutable | Pinnable, audit-safe build reference |
 
-**Maintenance release** (e.g. `v1.17.5`, built from docker `v1.17`):
+**Maintenance release** (e.g. `v1.17.5`, built from docker branch `v1.17`):
 
 | Tag | Type | Description |
 |---|---|---|
@@ -178,7 +178,7 @@ required input for manual `workflow_dispatch` runs.
 | `target_commitish` | Docker repo branch | Beta? | Tags pushed |
 |---|---|---|---|
 | `develop` | `develop` | yes | version, `X.Y-beta`, immutable |
-| `master` | `main` | no | version, minor, stable, `X.Y-beta`→stable, immutable |
+| `master` | `main` | no | version, minor, stable, `X.Y-beta`→minor, immutable |
 | `v1.17` | `v1.17` | no | version, minor, `X.Y-beta`→latest patch, immutable |
 
 ### Managing Release Builds
