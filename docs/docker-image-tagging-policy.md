@@ -132,10 +132,7 @@ Executed per branch. Performs the following steps:
 Disable the `nightly-dispatcher.yml` workflow via the GitHub Actions UI:
 **Actions** → select the workflow → **Disable workflow**.
 
-**Trigger a manual build for a single branch**
-
-Go to **Actions** → `Docker Publish Nightly Image CI` → **Run workflow** → select the target
-branch.
+**Trigger a manual build** — see [Manual Builds](#manual-builds).
 
 ---
 
@@ -193,11 +190,52 @@ routing is driven by `target_commitish` from the release event.
 **Drop support for a maintenance version (e.g. `v1.17`):**
 Remove or archive the `v1.17` branch. No further release builds will be triggered for `v1.17.x`.
 
-**Trigger a manual release build:**
-Go to **Actions** → `Docker Publish Release CI` → **Run workflow**, select `main`, and provide
-both required inputs:
+**Trigger a manual release build** — see [Manual Builds](#manual-builds).
+
+---
+
+## Manual Builds
+
+Both the nightly and release pipelines expose two entry points for manual triggering: the
+**dispatcher** workflow and the **build** workflow. They serve different purposes.
+
+### Nightly builds
+
+| Entry point | Workflow | Branches triggered | Typical use |
+|---|---|---|---|
+| Dispatcher | `Nightly Build Dispatcher` | All branches in the matrix | Re-run all nightly builds at once; validate after changing the matrix |
+| Build workflow | `Docker Publish Nightly Image CI` | One branch (your choice) | Debug a single branch; test a Dockerfile change in isolation |
+
+**Via dispatcher** — triggers the full matrix in one shot:
+
+**Actions** → `Nightly Build Dispatcher` → **Run workflow** → select `main` → **Run workflow**
+
+**Via build workflow** — targets a single branch:
+
+**Actions** → `Docker Publish Nightly Image CI` → **Run workflow** → select the target branch → **Run workflow**
+
+### Release builds
+
+| Entry point | Workflow | Branches triggered | Typical use |
+|---|---|---|---|
+| Dispatcher | `Release Build Dispatcher` | Derived from `target_commitish` | Standard manual trigger; backfill a missed release |
+| Build workflow | `Docker Publish Release Image CI` | Derived from `target_commitish` | Debug the build step directly; bypass dispatcher |
+
+Both variants require the same two inputs:
 - `release_tag` — the HumHub git tag (e.g. `v1.18.2` or `v1.19.0-beta.1`)
-- `target_commitish` — the branch it was cut from in `humhub/humhub` (e.g. `master`, `develop`, or `v1.17`)
+- `target_commitish` — the branch the release was cut from in `humhub/humhub` (e.g. `master`, `develop`, or `v1.17`)
+
+**Via dispatcher** (recommended — mirrors the automated path):
+
+**Actions** → `Release Build Dispatcher` → **Run workflow** → select `main` → fill in inputs → **Run workflow**
+
+**Via build workflow** (direct, useful for debugging):
+
+**Actions** → `Docker Publish Release Image CI` → **Run workflow** → select `main` → fill in inputs → **Run workflow**
+
+> Prefer the dispatcher for routine manual runs — it follows the same code path as the automated
+> trigger. Use the build workflow directly only when you need to isolate or debug the build step
+> itself.
 
 ---
 
