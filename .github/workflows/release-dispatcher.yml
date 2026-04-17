@@ -8,11 +8,11 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'HumHub release tag (e.g. v1.18.2)'
+        description: 'HumHub release tag (e.g. v1.18.2, v1.19.0-beta.1)'
         required: true
         type: string
       target_commitish:
-        description: 'Branch the release was cut from in humhub/humhub (e.g. master, v1.17)'
+        description: 'Branch the release was cut from in humhub/humhub (e.g. master, develop, v1.17)'
         required: true
         type: string
 
