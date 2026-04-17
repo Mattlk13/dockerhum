@@ -32,18 +32,26 @@ Every build pushes **two tags**:
 
 ### Release Builds
 
-The set of tags pushed depends on whether the `humhub/humhub` release originates from the `master` line
-(built from docker `main`) or is a maintenance release of an older version (built from a
-version branch such as `v1.17`).
+The set of tags pushed depends on whether the `humhub/humhub` release originates from `develop`
+(beta), `master` (new stable release), or a version branch (maintenance release).
 
-**New release** (e.g. `v1.18.2`, built from docker `main`):
+**Beta release** (e.g. `v1.19.0-beta.1`, built from docker `develop`):
 
 | Tag | Type | Description |
 |---|---|---|
-| `1.18.2` | Mutable | Exact version |
+| `1.19.0-beta.1` | Mutable | Exact beta version |
+| `1.19-beta` | Mutable | Always the latest beta of the 1.19 line |
+| `1.19.0-beta.1-YYYYMMDDHHMMSS-<sha7>` | Immutable | Pinnable, audit-safe build reference |
+
+**New stable release** (e.g. `v1.18.0`, built from docker `main`):
+
+| Tag | Type | Description |
+|---|---|---|
+| `1.18.0` | Mutable | Exact version |
 | `1.18` | Mutable | Always the latest patch of this minor version |
 | `stable` | Mutable | Always the newest stable release overall |
-| `1.18.2-YYYYMMDDHHMMSS-<sha7>` | Immutable | Pinnable, audit-safe build reference |
+| `1.18-beta` | Mutable | Transitions from beta to stable — points to `1.18.0` |
+| `1.18.0-YYYYMMDDHHMMSS-<sha7>` | Immutable | Pinnable, audit-safe build reference |
 
 **Maintenance release** (e.g. `v1.17.5`, built from docker `v1.17`):
 
@@ -51,10 +59,18 @@ version branch such as `v1.17`).
 |---|---|---|
 | `1.17.5` | Mutable | Exact version |
 | `1.17` | Mutable | Always the latest patch of this minor version |
+| `1.17-beta` | Mutable | Consistent with all versions — points to latest `1.17.x` |
 | `1.17.5-YYYYMMDDHHMMSS-<sha7>` | Immutable | Pinnable, audit-safe build reference |
 
-The `stable` tag is intentionally absent from maintenance releases — it always reflects the
-newest release from the `master` line only, consistent with how `stable-nightly` works.
+The `stable` tag is intentionally absent from beta and maintenance releases — it always reflects
+the newest stable release from the `master` line only, consistent with how `stable-nightly` works.
+
+>Note that `stable` is a floating tag and will move across major versions, which may include
+breaking changes.
+
+The `X.Y-beta` tag naturally transitions across the release lifecycle: it first points to the
+latest beta of that minor version, then moves forward to the stable release once published.
+This means users tracking `1.19-beta` automatically receive the stable `1.19.0` once it ships.
 
 **Why `latest` is not published**
 
@@ -62,9 +78,6 @@ newest release from the `master` line only, consistent with how `stable-nightly`
 when no tag is specified. It is omitted from this project in favour of the more descriptive
 `stable` tag, which communicates intent explicitly and is consistent with the nightly naming
 convention (`stable-nightly`).
-
->Note that `stable` is a floating tag and will move across major versions, which may include
-breaking changes.
 
 ---
 
@@ -128,9 +141,9 @@ branch.
 
 ## Release Build Workflow
 
-Release builds are triggered whenever a new stable release is published in the upstream
-[humhub/humhub](https://github.com/humhub/humhub) repository. The `develop` branch is out of
-scope — only releases from the `master` line and supported maintenance versions are built.
+Release builds are triggered whenever a release is published in the upstream
+[humhub/humhub](https://github.com/humhub/humhub) repository. This covers beta releases from
+`develop`, stable releases from `master`, and maintenance releases from version branches.
 
 ### Trigger Flow
 
@@ -161,16 +174,15 @@ A PAT with `actions: write` permission on `humhub/docker` must be stored as a se
 
 ### Docker Repo Branch Selection
 
-The docker repo branch and the `stable` tag decision are both derived directly from
-`target_commitish` — the branch that was set as the release target in `humhub/humhub`:
-
-| `target_commitish` | Docker repo branch | `stable` pushed? |
-|---|---|---|
-| `master` | `main` | yes |
-| `v1.17` | `v1.17` | no |
-
-`target_commitish` is included in the `repository_dispatch` payload automatically and is a
+Routing is driven entirely by `target_commitish` — the branch set as the release target in
+`humhub/humhub`. It is included in the `repository_dispatch` payload automatically and is a
 required input for manual `workflow_dispatch` runs.
+
+| `target_commitish` | Docker repo branch | Beta? | Tags pushed |
+|---|---|---|---|
+| `develop` | `develop` | yes | version, `X.Y-beta`, immutable |
+| `master` | `main` | no | version, minor, stable, `X.Y-beta`→stable, immutable |
+| `v1.17` | `v1.17` | no | version, minor, `X.Y-beta`→latest patch, immutable |
 
 ### Managing Release Builds
 
@@ -184,8 +196,8 @@ Remove or archive the `v1.17` branch. No further release builds will be triggere
 **Trigger a manual release build:**
 Go to **Actions** → `Docker Publish Release CI` → **Run workflow**, select `main`, and provide
 both required inputs:
-- `release_tag` — the HumHub git tag (e.g. `v1.18.2`)
-- `target_commitish` — the branch it was cut from in `humhub/humhub` (e.g. `master` or `v1.17`)
+- `release_tag` — the HumHub git tag (e.g. `v1.18.2` or `v1.19.0-beta.1`)
+- `target_commitish` — the branch it was cut from in `humhub/humhub` (e.g. `master`, `develop`, or `v1.17`)
 
 ---
 
@@ -246,15 +258,16 @@ Examples matched:
 
 ### Release immutable tags
 
-Pattern — matches `1.18.2-YYYYMMDDHHMMSS-<sha7>`, `1.17.5-…`:
+Pattern — matches stable/maintenance (`1.18.2-…`) and beta (`1.19.0-beta.1-…`) immutable tags:
 
 ```
-^[0-9]+\.[0-9]+\.[0-9]+-[0-9]{14}-[0-9a-f]{7}$
+^[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?-[0-9]{14}-[0-9a-f]{7}$
 ```
 
 Examples matched:
 - `1.18.2-20260416103300-a1b2c3d`
 - `1.17.5-20260416103300-a1b2c3d`
+- `1.19.0-beta.1-20260416103300-a1b2c3d`
 
 ### Combined pattern
 
