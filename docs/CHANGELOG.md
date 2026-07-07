@@ -20,6 +20,10 @@ July 16, 2026
 -------------
 - Enh: Configurable access and error logging (stdout or file), see docs/logging.md
 
+July 7, 2026
+------------
+- Fix: Publish live (Mercure) updates via a loopback-only plaintext HTTP endpoint instead of the public HTTPS address, avoiding intermittent "tlsv1 alert internal error" TLS handshake failures against Caddy's internal certificate
+
 June 30, 2026                                                                                                                                 
 -------------                                                                                                                                 
 - Fix: Strip X-Accel-Redirect header from responses so it is not exposed to clients (e.g. Cloudflare)
