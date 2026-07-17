@@ -83,6 +83,34 @@ absent, so it is kept on regardless of whether Mercure is enabled.
 | `HUMHUB_DOCKER__SERVER_LOG_OUTPUT` | `stderr` | `stdout`, `stderr`, `file` | Destination |
 | `HUMHUB_DOCKER__SERVER_LOG_FILE` | `/data/logs/server.log` | path | File path when output is `file` |
 
+### Client IP behind a reverse proxy
+
+The access log records `remote_ip` (the direct TCP peer) and `client_ip`. When the
+container runs behind a reverse proxy or is reached through the Docker gateway, the
+peer is the proxy/gateway (e.g. `172.18.0.1`) and the real visitor IP is only in
+the `X-Forwarded-For` header. The image does **not** trust that header by default:
+surfacing (and where required anonymizing) real client IPs is a data-privacy
+decision left to the reverse-proxy operator.
+
+To have Caddy derive the client IP from `X-Forwarded-For`, set the base image's
+`CADDY_GLOBAL_OPTIONS` variable (mapping syntax keeps the multi-line value):
+
+```yaml
+services:
+  humhub:
+    environment:
+      CADDY_GLOBAL_OPTIONS: |
+        servers {
+          trusted_proxies static private_ranges
+          client_ip_headers X-Forwarded-For
+        }
+```
+
+Replace `private_ranges` with your proxy's IP/CIDR to trust only that source. Note
+that this makes real client IPs (IPv4/IPv6, personal data under GDPR) appear in the
+access log; anonymize or drop them at your proxy, or via a Caddy log filter, per
+your privacy requirements.
+
 ### HumHub application log
 
 The file (`/data/logs/app.log`) and database targets are configured by HumHub core
