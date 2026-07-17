@@ -197,14 +197,17 @@ This all-in-one image runs several processes under a supervisor, so a single
 stream can interleave output from the web server, the worker and the scheduler.
 Distinguish them, in order of reliability:
 
-1. **JSON fields** — the web server tags entries with a `logger` (for example
+1. **Process prefix** — the scheduler, worker and (when enabled) the `app.log`
+   mirror prefix every line with their supervisor process name, e.g.
+   `[humhub-scheduler]`, `[humhub-worker_00]`, `[humhub-app-log]`. With more than
+   one worker each instance is distinct (`_00`, `_01`, ...).
+2. **JSON fields** — the web server tags entries with a `logger` (for example
    `http.log.access.*` for the access log) and a `level`.
-2. **The stream** — access log on `stdout`, diagnostics/PHP errors on `stderr`.
-3. **A collector label** — have your log agent tag lines with the container name
+3. **The stream** — access log on `stdout`, diagnostics/PHP errors on `stderr`.
+4. **A collector label** — have your log agent tag lines with the container name
    and stream.
 
-The worker and scheduler emit plain text without a source prefix. If you need
-strict per-process separation, run the split topology in
+If you need strict per-process separation, run the split topology in
 `examples/compose-multi-services.yml`, where the web server, worker and cron run
 as separate containers and therefore have separate log streams. That is the more
 container-native setup and the recommended one for larger production deployments.
