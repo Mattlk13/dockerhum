@@ -32,16 +32,16 @@ export HUMHUB_DOCKER__NUMPROCS_WORKER=${HUMHUB_DOCKER__NUMPROCS_WORKER:-"2"}
 #--- Logging defaults (see docs/logging.md)
 export HUMHUB_DOCKER__ACCESS_LOG=${HUMHUB_DOCKER__ACCESS_LOG:-"false"}
 export HUMHUB_DOCKER__ACCESS_LOG_FORMAT=${HUMHUB_DOCKER__ACCESS_LOG_FORMAT:-"json"}
-export HUMHUB_DOCKER__ACCESS_LOG_OUTPUT=${HUMHUB_DOCKER__ACCESS_LOG_OUTPUT:-"stdout"}
+export HUMHUB_DOCKER__ACCESS_LOG_TARGET=${HUMHUB_DOCKER__ACCESS_LOG_TARGET:-"stdout"}
 export HUMHUB_DOCKER__ACCESS_LOG_FILE=${HUMHUB_DOCKER__ACCESS_LOG_FILE:-"/data/logs/access.log"}
 export HUMHUB_DOCKER__ACCESS_LOG_ROLL_SIZE=${HUMHUB_DOCKER__ACCESS_LOG_ROLL_SIZE:-"100MiB"}
 export HUMHUB_DOCKER__ACCESS_LOG_ROLL_KEEP=${HUMHUB_DOCKER__ACCESS_LOG_ROLL_KEEP:-"5"}
 export HUMHUB_DOCKER__SERVER_LOG=${HUMHUB_DOCKER__SERVER_LOG:-"true"}
 export HUMHUB_DOCKER__SERVER_LOG_LEVEL=${HUMHUB_DOCKER__SERVER_LOG_LEVEL:-"INFO"}
 export HUMHUB_DOCKER__SERVER_LOG_FORMAT=${HUMHUB_DOCKER__SERVER_LOG_FORMAT:-"json"}
-export HUMHUB_DOCKER__SERVER_LOG_OUTPUT=${HUMHUB_DOCKER__SERVER_LOG_OUTPUT:-"stderr"}
+export HUMHUB_DOCKER__SERVER_LOG_TARGET=${HUMHUB_DOCKER__SERVER_LOG_TARGET:-"stderr"}
 export HUMHUB_DOCKER__SERVER_LOG_FILE=${HUMHUB_DOCKER__SERVER_LOG_FILE:-"/data/logs/server.log"}
-export HUMHUB_DOCKER__APP_LOG_STDOUT=${HUMHUB_DOCKER__APP_LOG_STDOUT:-"true"}
+export HUMHUB_DOCKER__ENABLE_APP_LOG_TO_STDOUT=${HUMHUB_DOCKER__ENABLE_APP_LOG_TO_STDOUT:-"true"}
 
 #----------------------------------------------------------------------
 # MOUNTED DATA FOLDER HANDLING
@@ -88,10 +88,10 @@ EOF
 #--- Logging: server runtime/error log (Caddy default logger), see docs/logging.md
 if [ "$HUMHUB_DOCKER__SERVER_LOG" != "true" ]; then
   _server_log_output="output discard"
-elif [ "$HUMHUB_DOCKER__SERVER_LOG_OUTPUT" = "file" ]; then
+elif [ "$HUMHUB_DOCKER__SERVER_LOG_TARGET" = "file" ]; then
   _server_log_output="output file ${HUMHUB_DOCKER__SERVER_LOG_FILE}"
 else
-  _server_log_output="output ${HUMHUB_DOCKER__SERVER_LOG_OUTPUT}"
+  _server_log_output="output ${HUMHUB_DOCKER__SERVER_LOG_TARGET}"
 fi
 export CADDY_GLOBAL_OPTIONS+="$(cat <<EOF
 
@@ -105,13 +105,13 @@ EOF
 
 #--- Logging: HTTP access log (site-scoped, opt-out via ACCESS_LOG=false)
 if [ "$HUMHUB_DOCKER__ACCESS_LOG" = "true" ]; then
-  if [ "$HUMHUB_DOCKER__ACCESS_LOG_OUTPUT" = "file" ]; then
+  if [ "$HUMHUB_DOCKER__ACCESS_LOG_TARGET" = "file" ]; then
     _access_log_output="output file ${HUMHUB_DOCKER__ACCESS_LOG_FILE} {
       roll_size ${HUMHUB_DOCKER__ACCESS_LOG_ROLL_SIZE}
       roll_keep ${HUMHUB_DOCKER__ACCESS_LOG_ROLL_KEEP}
     }"
   else
-    _access_log_output="output ${HUMHUB_DOCKER__ACCESS_LOG_OUTPUT}"
+    _access_log_output="output ${HUMHUB_DOCKER__ACCESS_LOG_TARGET}"
   fi
   export CADDY_SERVER_EXTRA_DIRECTIVES+="$(cat <<EOF
 

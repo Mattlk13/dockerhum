@@ -66,14 +66,14 @@ log is off, and server diagnostics/errors go to `stderr` as JSON.
 
 ### HTTP access log
 
-| Variable | Default | Values | Description |
-|---|---|---|---|
-| `HUMHUB_DOCKER__ACCESS_LOG` | `false` | `true`, `false` | Enable the HTTP access log |
+| Variable | Default | Values | Description                                  |
+|---|---|---|----------------------------------------------|
+| `HUMHUB_DOCKER__ACCESS_LOG` | `false` | `true`, `false` | Enable the HTTP access log                   |
 | `HUMHUB_DOCKER__ACCESS_LOG_FORMAT` | `json` | `json`, `console` | `json` for aggregators, `console` for humans |
-| `HUMHUB_DOCKER__ACCESS_LOG_OUTPUT` | `stdout` | `stdout`, `file` | Container stream or a file on `/data` |
-| `HUMHUB_DOCKER__ACCESS_LOG_FILE` | `/data/logs/access.log` | path | File path when output is `file` |
-| `HUMHUB_DOCKER__ACCESS_LOG_ROLL_SIZE` | `100MiB` | size | Rotate file after this size |
-| `HUMHUB_DOCKER__ACCESS_LOG_ROLL_KEEP` | `5` | count | Number of rotated files to keep |
+| `HUMHUB_DOCKER__ACCESS_LOG_TARGET` | `stdout` | `stdout`, `file` | Container stream or a file on `/data`        |
+| `HUMHUB_DOCKER__ACCESS_LOG_FILE` | `/data/logs/access.log` | path | File path when target is `file`              |
+| `HUMHUB_DOCKER__ACCESS_LOG_ROLL_SIZE` | `100MiB` | size | Rotate file after this size                  |
+| `HUMHUB_DOCKER__ACCESS_LOG_ROLL_KEEP` | `5` | count | Number of rotated files to keep              |
 
 The Mercure `authorization` query parameter is always redacted in the access log
 (the Mercure real-time hub passes its subscriber JWT this way when a browser
@@ -82,15 +82,15 @@ absent, so it is kept on regardless of whether Mercure is enabled.
 
 ### Server runtime/error log
 
-| Variable | Default | Values | Description |
-|---|---|---|---|
+| Variable | Default | Values | Description                                                  |
+|---|---|---|--------------------------------------------------------------|
 | `HUMHUB_DOCKER__SERVER_LOG` | `true` | `true`, `false` | Enable the server log (`false` discards it, not recommended) |
-| `HUMHUB_DOCKER__SERVER_LOG_LEVEL` | `INFO` | `ERROR`, `WARN`, `INFO`, `DEBUG` | Verbosity of the web server log |
-| `HUMHUB_DOCKER__SERVER_LOG_FORMAT` | `json` | `json`, `console` | Log encoder |
-| `HUMHUB_DOCKER__SERVER_LOG_OUTPUT` | `stderr` | `stdout`, `stderr`, `file` | Destination |
-| `HUMHUB_DOCKER__SERVER_LOG_FILE` | `/data/logs/server.log` | path | File path when output is `file` |
+| `HUMHUB_DOCKER__SERVER_LOG_LEVEL` | `INFO` | `ERROR`, `WARN`, `INFO`, `DEBUG` | Verbosity of the web server log                              |
+| `HUMHUB_DOCKER__SERVER_LOG_FORMAT` | `json` | `json`, `console` | Log encoder                                                  |
+| `HUMHUB_DOCKER__SERVER_LOG_TARGET` | `stderr` | `stdout`, `stderr`, `file` | Destination                                                  |
+| `HUMHUB_DOCKER__SERVER_LOG_FILE` | `/data/logs/server.log` | path | File path when target is `file`                              |
 
-When `SERVER_LOG_OUTPUT=file`, the file is rotated by Caddy's built-in defaults
+When `SERVER_LOG_TARGET=file`, the file is rotated by Caddy's built-in defaults
 (100 MiB, 10 files, 90 days). These are not exposed as env vars (unlike the access
 log's `*_ROLL_*`) because the server log is low-volume. On `stdout`/`stderr`,
 rotation is the Docker log driver's responsibility, not Caddy's.
@@ -132,7 +132,7 @@ and are always active. By default `app.log` is also mirrored onto the container
 
 | Variable | Default | Values | Description |
 |---|---|---|---|
-| `HUMHUB_DOCKER__APP_LOG_STDOUT` | `true` | `true`, `false` | Tail `app.log` to the container `stdout` |
+| `HUMHUB_DOCKER__ENABLE_APP_LOG_TO_STDOUT` | `true` | `true`, `false` | Tail `app.log` to the container `stdout` |
 
 ### PHP errors
 
@@ -144,8 +144,8 @@ override this.
 
 - **Web requests:** FrankenPHP funnels PHP errors into the server (default) logger
   under `logger=frankenphp`, so they follow the `SERVER_LOG_*` settings. With the
-  default `SERVER_LOG_OUTPUT=stderr` they appear on the container `stderr` next to
-  the server diagnostics; with `SERVER_LOG_OUTPUT=file` they are written into the
+  default `SERVER_LOG_TARGET=stderr` they appear on the container `stderr` next to
+  the server diagnostics; with `SERVER_LOG_TARGET=file` they are written into the
   server log **file** instead. Note that `SERVER_LOG=false` (`output discard`) also
   discards web PHP errors.
 - **CLI (worker, scheduler, `yii`):** these run the plain `php` binary and write
@@ -207,7 +207,7 @@ the ingestion.
           max-file: "5"
   ```
 
-- **Write to a file on `/data`.** Set the relevant `*_OUTPUT=file`. Files live in
+- **Write to a file on `/data`.** Set the relevant `*_TARGET=file`. Files live in
   `/data/logs` (persisted with the volume) and are rotated by Caddy using the
   `*_ROLL_SIZE` / `*_ROLL_KEEP` settings.
 
@@ -229,7 +229,7 @@ typical Compose setup — the MariaDB container.
 - Aggregators reading the stream: Loki/Promtail, Fluent Bit, Vector, the ELK stack.
 - The HumHub admin Logging page (database target) for product-level events.
 
-Because the default output is structured JSON on `stdout`/`stderr`, most
+Because the default target is structured JSON on `stdout`/`stderr`, most
 aggregators can consume it with no additional in-container configuration.
 
 ### Telling sources apart on the container stream
@@ -282,8 +282,8 @@ a DaemonSet agent collects them; the same principles apply with different plumbi
 
 ```yaml
     environment:
-      - HUMHUB_DOCKER__ACCESS_LOG_OUTPUT=file
-      - HUMHUB_DOCKER__SERVER_LOG_OUTPUT=file
+      - HUMHUB_DOCKER__ACCESS_LOG_TARGET=file
+      - HUMHUB_DOCKER__SERVER_LOG_TARGET=file
 ```
 
 Both files then appear in `/data/logs` (host: `./humhub-data/logs`) and are
