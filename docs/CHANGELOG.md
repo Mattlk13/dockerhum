@@ -4,6 +4,7 @@ Changelog
 September 24, 2026
 ------------------
 - Update CLI docs to match the HumHub admin console guide
+- Rewrite migration guide based on the restore procedure
 
 September 20, 2026
 ------------------
