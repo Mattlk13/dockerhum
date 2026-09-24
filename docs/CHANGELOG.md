@@ -1,6 +1,10 @@
 Changelog
 =========
 
+September 24, 2026
+------------------
+- Update CLI docs to match the HumHub admin console guide
+
 September 20, 2026
 ------------------
 - Revert temporary FrankenPHP 1.12.4 pin, base image tracks the floating 1-php8.4 tag again (HumHub core fix humhub/humhub#8340 shipped in 1.18.5 and 1.19.0-beta.2)
